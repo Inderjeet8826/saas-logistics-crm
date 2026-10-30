@@ -239,5 +239,7 @@ def seed_tenant():
     finally:
         db.close()
 
+seed = seed_tenant
+
 if __name__ == "__main__":
     seed_tenant()

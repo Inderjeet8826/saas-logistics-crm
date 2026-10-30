@@ -9,7 +9,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from seed_super_admin import seed as seed_super_admin
-from seed_tenant_data import seed as seed_tenant_data
+from seed_tenant_data import seed_tenant as seed_tenant_data
 
 if __name__ == "__main__":
     print("🌱 Seeding Super Admin...")
