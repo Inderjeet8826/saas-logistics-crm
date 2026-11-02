@@ -52,8 +52,8 @@ export default function SignupPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 text-center space-y-6">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="w-full max-w-md bg-slate-800 p-5 sm:p-8 rounded-2xl shadow-2xl border border-slate-700 text-center space-y-6">
           <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20 shadow-lg shadow-emerald-500/20">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -61,16 +61,25 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-white">Application Submitted!</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Application Submitted!</h2>
             <p className="text-sm text-slate-300">
-              Your company account for <span className="font-semibold text-blue-400">{name}</span> has been received.
+              Your company registration request for <span className="font-semibold text-blue-400">{name}</span> has been received.
             </p>
+            <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3 text-xs text-slate-300 text-left space-y-1.5 mt-3">
+              <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                <span>✉️</span>
+                <span>Confirmation Email Sent</span>
+              </div>
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                We have dispatched an acknowledgment email to <code className="text-white font-mono">{adminEmail}</code> with your application details.
+              </p>
+            </div>
             <p className="text-xs text-slate-400 leading-relaxed pt-2">
-              Our platform administration will review and activate your subscription portal shortly. Once approved, you can sign in using <code className="text-white font-mono">{adminEmail}</code>.
+              Our administration team will review and activate your subscription shortly. Once activated, you can immediately sign into your workspace.
             </p>
           </div>
 
-          <div className="pt-4 border-t border-slate-700/60">
+          <div className="pt-2 border-t border-slate-700/60">
             <Link
               href="/login"
               className="inline-flex justify-center items-center w-full py-3 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition shadow-lg shadow-blue-600/20"
@@ -84,8 +93,8 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 sm:px-6 lg:px-8 py-12">
-      <div className="w-full max-w-lg space-y-8 bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="w-full max-w-lg space-y-6 sm:space-y-8 bg-slate-800 p-5 sm:p-8 rounded-2xl shadow-2xl border border-slate-700">
         {/* Brand Header */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white mb-3 shadow-lg shadow-blue-500/30">
@@ -123,35 +132,46 @@ export default function SignupPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Desired Subdomain *</label>
-                <div className="flex items-center">
-                  <input
-                    type="text"
-                    required
-                    placeholder="express"
-                    value={subdomain}
-                    onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                    className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-l-xl text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="px-2.5 py-2 bg-slate-900 border border-l-0 border-slate-700 rounded-r-xl text-slate-400 text-xs font-mono">
-                    .yourapp
-                  </span>
-                </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Desired Workspace Subdomain *</label>
+              <div className="flex items-center w-full rounded-xl bg-slate-900 border border-slate-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. express"
+                  value={subdomain}
+                  onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                  className="flex-1 min-w-0 px-3.5 py-2.5 bg-transparent text-white text-sm font-mono focus:outline-none placeholder-slate-500"
+                />
+                <span className="px-3.5 py-2.5 bg-slate-800 text-slate-400 text-xs font-mono border-l border-slate-700 whitespace-nowrap select-none">
+                  .yourapp
+                </span>
               </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Your portal will be accessible at:{" "}
+                <span className="text-blue-400 font-mono">
+                  {subdomain ? `${subdomain}.yourapp` : "yourcompany.yourapp"}
+                </span>
+              </p>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Plan</label>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Subscription Plan *</label>
+              <div className="relative">
                 <select
                   value={plan}
                   onChange={(e) => setPlan(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none pr-10"
                 >
                   <option value="starter">Starter Plan (Up to 5 Users)</option>
                   <option value="standard">Standard Plan (Unlimited)</option>
                   <option value="enterprise">Enterprise Plan (Dedicated)</option>
                 </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -181,7 +201,7 @@ export default function SignupPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Password *</label>
                 <input

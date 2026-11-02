@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import (
@@ -35,15 +36,42 @@ def list_companies(db: Session = Depends(get_db)):
 @router.post("/companies", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
 def create_company(body: CompanyCreate, db: Session = Depends(get_db)):
     """Provision a new tenant company and optionally create its initial admin user."""
-    existing = db.query(Company).filter(Company.subdomain == body.subdomain).first()
+    clean_subdomain = body.subdomain.strip().lower()
+    clean_name = body.name.strip()
+
+    from app.routers.signup import RESERVED_SUBDOMAINS
+    if clean_subdomain in RESERVED_SUBDOMAINS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"The subdomain '{clean_subdomain}' is reserved and cannot be registered.",
+        )
+
+    existing = db.query(Company).filter(func.lower(Company.subdomain) == clean_subdomain).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Subdomain '{body.subdomain}' is already taken",
+            detail=f"Subdomain '{clean_subdomain}' is already taken",
         )
+
+    existing_name = db.query(Company).filter(func.lower(Company.name) == clean_name.lower()).first()
+    if existing_name:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A company with the name '{clean_name}' already exists",
+        )
+
+    clean_email = body.admin_email.strip().lower() if body.admin_email else None
+    if clean_email:
+        if db.query(SuperAdmin).filter(func.lower(SuperAdmin.email) == clean_email).first() or \
+           db.query(User).filter(func.lower(User.email) == clean_email).first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"An account with email '{clean_email}' already exists",
+            )
+
     company = Company(
-        name=body.name,
-        subdomain=body.subdomain,
+        name=clean_name,
+        subdomain=clean_subdomain,
         plan=body.plan,
         subscription_status="active",
     )
@@ -51,11 +79,11 @@ def create_company(body: CompanyCreate, db: Session = Depends(get_db)):
     db.flush()
 
     # If admin credentials are provided, create the initial company admin user
-    if body.admin_email and body.admin_password:
+    if clean_email and body.admin_password:
         admin_user = User(
             company_id=company.id,
-            name=body.admin_name or f"{body.name} Admin",
-            email=body.admin_email,
+            name=body.admin_name or f"{clean_name} Admin",
+            email=clean_email,
             password_hash=hash_password(body.admin_password),
             role="admin",
             is_active=True,
@@ -94,12 +122,32 @@ def update_company(company_id: int, body: CompanyUpdate, db: Session = Depends(g
     company = db.query(Company).filter(Company.id == company_id).first()
     if not company:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+    
+    prev_status = company.subscription_status
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(company, field, value)
 
     # Sync company users active status when company status changes
     if body.subscription_status == "active":
         db.query(User).filter(User.company_id == company.id).update({"is_active": True})
+        # If transitioning to active, send activation notification email
+        if prev_status != "active":
+            admin_user = (
+                db.query(User)
+                .filter(User.company_id == company.id, User.role == "admin")
+                .first()
+            )
+            if admin_user and admin_user.email:
+                from app.config import settings
+                from app.core.email import send_subscription_activated_email
+
+                send_subscription_activated_email(
+                    to_email=admin_user.email,
+                    company_name=company.name,
+                    subdomain=company.subdomain,
+                    plan=company.plan,
+                    base_domain=settings.BASE_DOMAIN,
+                )
     elif body.subscription_status in ("suspended", "pending"):
         db.query(User).filter(User.company_id == company.id).update({"is_active": False})
 

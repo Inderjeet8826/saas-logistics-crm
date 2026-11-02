@@ -121,7 +121,7 @@ export default function JobsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-slate-800 pb-3">
+      <div className="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto scrollbar-none flex-nowrap">
         {[
           { label: "All Shipments", value: "all" },
           { label: "Active In-Transit", value: "active" },
@@ -207,7 +207,7 @@ export default function JobsPage() {
                         {j.job_status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
                       <button
                         onClick={() => openMilestoneModal(j)}
                         className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition cursor-pointer shadow-sm shadow-blue-600/30"
@@ -225,25 +225,25 @@ export default function JobsPage() {
 
       {/* Milestones Stepper / Update Modal */}
       {selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl p-4 sm:p-6 shadow-2xl space-y-5 sm:space-y-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-white">
+                <h3 className="text-base sm:text-lg font-bold text-white">
                   Milestone Progress — <span className="font-mono text-blue-400">{selectedJob.job_no}</span>
                 </h3>
                 <p className="text-xs text-slate-400">
                   {selectedJob.pol} &rarr; {selectedJob.pod} | Container: {selectedJob.container_no || "Unassigned"}
                 </p>
               </div>
-              <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-white p-1">✕</button>
             </div>
 
             {isMilestoneLoading ? (
               <p className="text-center py-8 text-slate-500">Loading milestone history...</p>
             ) : (
               <form onSubmit={handleSaveMilestones} className="space-y-4">
-                <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50">
+                <div className="bg-slate-800/60 p-3 sm:p-4 rounded-xl border border-slate-700/50">
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Overall Shipment Status</label>
                   <select
                     value={jobStatus}
@@ -255,7 +255,7 @@ export default function JobsPage() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">1. Empty Pickup Date</label>
                     <input
@@ -276,7 +276,7 @@ export default function JobsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">3. Port Gate-In Date</label>
                     <input
@@ -297,7 +297,7 @@ export default function JobsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Shipping Bill / BE No</label>
                     <input
@@ -319,7 +319,7 @@ export default function JobsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">6. Sailing Date</label>
                     <input

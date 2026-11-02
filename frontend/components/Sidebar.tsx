@@ -5,7 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function Sidebar() {
+interface SidebarProps {
+  isMobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
 
@@ -125,28 +130,43 @@ export default function Sidebar() {
 
   const navigation = isSuperAdmin ? superAdminNavigation : tenantNavigation;
 
-  return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 min-h-screen">
+  const renderNavContent = () => (
+    <>
       {/* Brand logo */}
-      <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800">
-        <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
-            />
-          </svg>
+      <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
+              />
+            </svg>
+          </div>
+          <div>
+            <span className="font-bold text-white text-base tracking-wide block leading-none">
+              Logistics CRM
+            </span>
+            <span className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider block mt-1">
+              {isSuperAdmin ? "Super Admin" : "Company Portal"}
+            </span>
+          </div>
         </div>
-        <div>
-          <span className="font-bold text-white text-base tracking-wide block leading-none">
-            Logistics CRM
-          </span>
-          <span className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider block mt-1">
-            {isSuperAdmin ? "Super Admin" : "Company Portal"}
-          </span>
-        </div>
+
+        {/* Mobile close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+            aria-label="Close menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Nav List */}
@@ -157,6 +177,7 @@ export default function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => onClose?.()}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
                 isActive
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
@@ -186,6 +207,30 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar (Permanent docked on md: screens and larger) */}
+      <aside className="hidden md:flex md:w-64 bg-slate-900 border-r border-slate-800 flex-col flex-shrink-0 min-h-screen">
+        {renderNavContent()}
+      </aside>
+
+      {/* Mobile Drawer (Visible only when isMobileOpen is true) */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            onClick={onClose}
+          />
+          {/* Drawer Panel */}
+          <div className="fixed top-0 bottom-0 left-0 w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 flex flex-col shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+            {renderNavContent()}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

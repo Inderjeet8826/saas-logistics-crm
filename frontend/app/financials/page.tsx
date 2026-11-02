@@ -179,7 +179,7 @@ export default function FinancialsPage() {
                         {f.payment_status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
                       <button
                         onClick={() => openPaymentModal(f)}
                         className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium border border-slate-700 transition cursor-pointer"
@@ -197,8 +197,8 @@ export default function FinancialsPage() {
 
       {/* Record Payment Modal */}
       {selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-white">Record Invoice / Payment</h3>
               <button onClick={() => setSelectedRecord(null)} className="text-slate-400 hover:text-white">✕</button>

@@ -177,22 +177,22 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 pt-2">
-            <div className="bg-slate-800/60 rounded-xl p-4 text-center border border-slate-700/40">
-              <span className="text-xs text-slate-400 font-medium">Open</span>
-              <p className="text-2xl font-bold text-blue-400 mt-1">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2">
+            <div className="bg-slate-800/60 rounded-xl p-2.5 sm:p-4 text-center border border-slate-700/40">
+              <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Open</span>
+              <p className="text-xl sm:text-2xl font-bold text-blue-400 mt-1">
                 {data?.enquiries.by_status?.open || 0}
               </p>
             </div>
-            <div className="bg-slate-800/60 rounded-xl p-4 text-center border border-slate-700/40">
-              <span className="text-xs text-slate-400 font-medium">Won (Booked)</span>
-              <p className="text-2xl font-bold text-emerald-400 mt-1">
+            <div className="bg-slate-800/60 rounded-xl p-2.5 sm:p-4 text-center border border-slate-700/40">
+              <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Won</span>
+              <p className="text-xl sm:text-2xl font-bold text-emerald-400 mt-1">
                 {data?.enquiries.by_status?.won || 0}
               </p>
             </div>
-            <div className="bg-slate-800/60 rounded-xl p-4 text-center border border-slate-700/40">
-              <span className="text-xs text-slate-400 font-medium">Lost</span>
-              <p className="text-2xl font-bold text-red-400 mt-1">
+            <div className="bg-slate-800/60 rounded-xl p-2.5 sm:p-4 text-center border border-slate-700/40">
+              <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Lost</span>
+              <p className="text-xl sm:text-2xl font-bold text-red-400 mt-1">
                 {data?.enquiries.by_status?.lost || 0}
               </p>
             </div>

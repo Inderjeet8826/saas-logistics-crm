@@ -102,9 +102,13 @@ export default function SuperAdminPage() {
 
   const handleStatusChange = async (companyId: number, newStatus: string) => {
     try {
+      const company = companies.find((c) => c.id === companyId);
       await api.patch(`/api/super-admin/companies/${companyId}`, {
         subscription_status: newStatus,
       });
+      if (newStatus === "active" && company?.subscription_status === "pending") {
+        alert(`✅ ${company.name} has been approved & activated! An activation email has been dispatched to the company admin.`);
+      }
       await fetchData();
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to update status");
@@ -272,7 +276,7 @@ export default function SuperAdminPage() {
                         {c.subscription_status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right space-x-2">
+                    <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                       <button
                         onClick={() => handleViewAsTenant(c.id)}
                         className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition cursor-pointer shadow-sm shadow-blue-600/30"
@@ -284,9 +288,13 @@ export default function SuperAdminPage() {
                       {c.subscription_status !== "active" ? (
                         <button
                           onClick={() => handleStatusChange(c.id, "active")}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 transition cursor-pointer"
+                          className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer shadow-sm ${
+                            c.subscription_status === "pending"
+                              ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30"
+                              : "bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30"
+                          }`}
                         >
-                          Activate
+                          {c.subscription_status === "pending" ? "✓ Approve & Activate" : "Reactivate"}
                         </button>
                       ) : (
                         <button
@@ -307,16 +315,16 @@ export default function SuperAdminPage() {
 
       {/* Modal: Create Tenant Company with Admin Credentials */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-white">Provision New Tenant</h3>
+                <h3 className="text-base sm:text-lg font-bold text-white">Provision New Tenant</h3>
                 <p className="text-xs text-slate-400">Setup company account and initial admin login</p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white p-1"
               >
                 ✕
               </button>
@@ -340,34 +348,39 @@ export default function SuperAdminPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Subdomain *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="apex"
-                      value={subdomain}
-                      onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Subdomain *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. apex"
+                    value={subdomain}
+                    onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                    className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Plan
-                    </label>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Subscription Plan
+                  </label>
+                  <div className="relative">
                     <select
                       value={plan}
                       onChange={(e) => setPlan(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none pr-10"
                     >
                       <option value="starter">Starter Plan</option>
                       <option value="standard">Standard Plan</option>
                       <option value="enterprise">Enterprise Plan</option>
                     </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -388,7 +401,7 @@ export default function SuperAdminPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Admin Email *
