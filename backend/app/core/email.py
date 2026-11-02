@@ -28,51 +28,121 @@ def send_email(
         # Fallback text content if none provided
         text_content = html_content.replace("<br>", "\n").replace("</p>", "\n\n")
 
-    if not settings.SMTP_HOST:
-        divider = "-" * 60
-        border = "=" * 60
-        logger.info(
-            f"\n{border}\n"
-            f"[EMAIL SERVICE (LOCAL/DEV MOCK)]\n"
-            f"To: {to_email}\n"
-            f"From: {settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>\n"
-            f"Subject: {subject}\n"
-            f"{divider}\n"
-            f"{text_content.strip()}\n"
-            f"{border}"
-        )
-        return True
+    # ── Strategy 1: HTTP-based Email API (Resend) ──────────────────────
+    # Cloud providers like Render Free Tier block outbound SMTP ports (25, 465, 587).
+    # HTTP APIs use Port 443 (HTTPS) which is never blocked!
+    if settings.RESEND_API_KEY:
+        try:
+            import json
+            import urllib.request
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
-        msg["To"] = to_email
+            # For resend, if using gmail/custom domain before domain verification, use onboarding@resend.dev
+            from_email = settings.SMTP_FROM_EMAIL
+            if not from_email or "gmail.com" in from_email or "yahoo.com" in from_email:
+                sender_header = f"{settings.SMTP_FROM_NAME} <onboarding@resend.dev>"
+            else:
+                sender_header = f"{settings.SMTP_FROM_NAME} <{from_email}>"
 
-        # Attach text and html versions
-        part1 = MIMEText(text_content, "plain")
-        part2 = MIMEText(html_content, "html")
-        msg.attach(part1)
-        msg.attach(part2)
+            payload = {
+                "from": sender_header,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_content,
+                "text": text_content,
+            }
+            req = urllib.request.Request(
+                "https://api.resend.com/emails",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {settings.RESEND_API_KEY.strip()}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "LogisticsCRM/1.0",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=12) as response:
+                if response.status in (200, 201):
+                    logger.info(f"[EMAIL SERVICE - RESEND API] Successfully sent email to {to_email}")
+                    return True
+        except Exception as exc:
+            logger.error(f"[EMAIL SERVICE ERROR - RESEND API] Failed to send to {to_email}: {exc}")
 
-        if settings.SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
-        else:
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
-            if settings.SMTP_TLS:
-                server.starttls()
+    # ── Strategy 2: HTTP-based Email API (Brevo) ───────────────────────
+    if settings.BREVO_API_KEY:
+        try:
+            import json
+            import urllib.request
 
-        if settings.SMTP_USER and settings.SMTP_PASSWORD:
-            clean_pwd = settings.SMTP_PASSWORD.replace(" ", "").strip()
-            server.login(settings.SMTP_USER, clean_pwd)
+            payload = {
+                "sender": {"name": settings.SMTP_FROM_NAME, "email": settings.SMTP_FROM_EMAIL},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "htmlContent": html_content,
+                "textContent": text_content,
+            }
+            req = urllib.request.Request(
+                "https://api.brevo.com/v3/smtp/email",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "api-key": settings.BREVO_API_KEY.strip(),
+                    "Content-Type": "application/json",
+                    "User-Agent": "LogisticsCRM/1.0",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=12) as response:
+                if response.status in (200, 201):
+                    logger.info(f"[EMAIL SERVICE - BREVO API] Successfully sent email to {to_email}")
+                    return True
+        except Exception as exc:
+            logger.error(f"[EMAIL SERVICE ERROR - BREVO API] Failed to send to {to_email}: {exc}")
 
-        server.sendmail(settings.SMTP_FROM_EMAIL, [to_email], msg.as_string())
-        server.quit()
-        logger.info(f"[EMAIL SERVICE] Successfully sent email '{subject}' to {to_email}")
-        return True
-    except Exception as exc:
-        logger.error(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {exc}")
-        return False
+    # ── Strategy 3: Standard SMTP (Localhost / Paid Servers) ────────────
+    if settings.SMTP_HOST:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
+            msg["To"] = to_email
+
+            part1 = MIMEText(text_content, "plain")
+            part2 = MIMEText(html_content, "html")
+            msg.attach(part1)
+            msg.attach(part2)
+
+            if settings.SMTP_PORT == 465:
+                server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
+            else:
+                server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
+                if settings.SMTP_TLS:
+                    server.starttls()
+
+            if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                clean_pwd = settings.SMTP_PASSWORD.replace(" ", "").strip()
+                server.login(settings.SMTP_USER, clean_pwd)
+
+            server.sendmail(settings.SMTP_FROM_EMAIL, [to_email], msg.as_string())
+            server.quit()
+            logger.info(f"[EMAIL SERVICE - SMTP] Successfully sent email '{subject}' to {to_email}")
+            return True
+        except Exception as exc:
+            logger.error(f"[EMAIL SERVICE ERROR - SMTP] Failed to send email to {to_email}: {exc}")
+            return False
+
+    # ── Strategy 4: Local Dev Mock Fallback ────────────────────────────
+    divider = "-" * 60
+    border = "=" * 60
+    logger.info(
+        f"\n{border}\n"
+        f"[EMAIL SERVICE (LOCAL/DEV MOCK)]\n"
+        f"To: {to_email}\n"
+        f"From: {settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>\n"
+        f"Subject: {subject}\n"
+        f"{divider}\n"
+        f"{text_content.strip()}\n"
+        f"{border}"
+    )
+    return True
 
 
 def send_registration_received_email(

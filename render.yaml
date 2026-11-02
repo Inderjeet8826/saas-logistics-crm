@@ -16,6 +16,8 @@ services:
         generateValue: true
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

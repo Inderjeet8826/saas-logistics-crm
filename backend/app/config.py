@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     FRONTEND_ORIGIN: str = "http://localhost:3000"
     ENVIRONMENT: str = "development"
 
-    # SMTP Email Configuration
+    # Email Delivery Configuration (HTTP API or SMTP)
+    RESEND_API_KEY: Optional[str] = None
+    BREVO_API_KEY: Optional[str] = None
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
