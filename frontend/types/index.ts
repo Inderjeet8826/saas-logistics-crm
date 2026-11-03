@@ -31,6 +31,8 @@ export interface Company {
   plan: string;
   subscription_status: "pending" | "active" | "suspended";
   created_at: string;
+  admin_email?: string | null;
+  admin_name?: string | null;
 }
 
 // ----- CONTACT -----

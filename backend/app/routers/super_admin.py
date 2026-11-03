@@ -17,7 +17,12 @@ from app.models.job import Job
 from app.models.super_admin import SuperAdmin
 from app.models.user import User
 from app.schemas.auth import TokenResponse
-from app.schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate
+from app.schemas.company import (
+    CompanyCreate,
+    CompanyResponse,
+    CompanyUpdate,
+    ResetCompanyPasswordRequest,
+)
 from app.schemas.super_admin import PlatformStats
 
 router = APIRouter(
@@ -29,8 +34,42 @@ router = APIRouter(
 
 @router.get("/companies", response_model=list[CompanyResponse])
 def list_companies(db: Session = Depends(get_db)):
-    """Return all tenant companies registered on the platform."""
-    return db.query(Company).order_by(Company.created_at.desc()).all()
+    """Return all tenant companies registered on the platform with their admin email."""
+    companies = db.query(Company).order_by(Company.created_at.desc()).all()
+    company_ids = [c.id for c in companies]
+    
+    # Map admin users to companies
+    admin_users = (
+        db.query(User)
+        .filter(User.company_id.in_(company_ids), User.role == "admin")
+        .all()
+    ) if company_ids else []
+    admin_map = {u.company_id: u for u in admin_users}
+    
+    # Fallback to any user if company doesn't have an admin role user
+    missing_ids = [c.id for c in companies if c.id not in admin_map]
+    if missing_ids:
+        other_users = db.query(User).filter(User.company_id.in_(missing_ids)).all()
+        for u in other_users:
+            if u.company_id not in admin_map:
+                admin_map[u.company_id] = u
+
+    results = []
+    for c in companies:
+        admin = admin_map.get(c.id)
+        results.append(
+            CompanyResponse(
+                id=c.id,
+                name=c.name,
+                subdomain=c.subdomain,
+                plan=c.plan,
+                subscription_status=c.subscription_status,
+                created_at=c.created_at,
+                admin_email=admin.email if admin else None,
+                admin_name=admin.name if admin else None,
+            )
+        )
+    return results
 
 
 @router.post("/companies", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
@@ -92,7 +131,22 @@ def create_company(body: CompanyCreate, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(company)
-    return company
+    admin_user = (
+        db.query(User)
+        .filter(User.company_id == company.id, User.role == "admin")
+        .first()
+        or db.query(User).filter(User.company_id == company.id).first()
+    )
+    return CompanyResponse(
+        id=company.id,
+        name=company.name,
+        subdomain=company.subdomain,
+        plan=company.plan,
+        subscription_status=company.subscription_status,
+        created_at=company.created_at,
+        admin_email=admin_user.email if admin_user else None,
+        admin_name=admin_user.name if admin_user else None,
+    )
 
 
 @router.post("/impersonate/{company_id}", response_model=TokenResponse)
@@ -153,7 +207,63 @@ def update_company(company_id: int, body: CompanyUpdate, db: Session = Depends(g
 
     db.commit()
     db.refresh(company)
-    return company
+    admin_user = (
+        db.query(User)
+        .filter(User.company_id == company.id, User.role == "admin")
+        .first()
+        or db.query(User).filter(User.company_id == company.id).first()
+    )
+    return CompanyResponse(
+        id=company.id,
+        name=company.name,
+        subdomain=company.subdomain,
+        plan=company.plan,
+        subscription_status=company.subscription_status,
+        created_at=company.created_at,
+        admin_email=admin_user.email if admin_user else None,
+        admin_name=admin_user.name if admin_user else None,
+    )
+
+
+@router.post("/companies/{company_id}/reset-password")
+def reset_company_password(
+    company_id: int,
+    body: ResetCompanyPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Allow super-admin to reset or set a new password for a tenant company's admin account.
+    """
+    company = db.query(Company).filter(Company.id == company_id).first()
+    if not company:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+
+    admin_user = (
+        db.query(User)
+        .filter(User.company_id == company.id, User.role == "admin")
+        .first()
+        or db.query(User).filter(User.company_id == company.id).first()
+    )
+    if not admin_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No admin user found for this company to reset password.",
+        )
+
+    clean_pwd = body.new_password.strip()
+    if len(clean_pwd) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters.",
+        )
+
+    admin_user.password_hash = hash_password(clean_pwd)
+    db.commit()
+    return {
+        "message": f"Password reset successfully for {admin_user.email}",
+        "admin_email": admin_user.email,
+        "admin_name": admin_user.name,
+    }
 
 
 @router.delete("/companies/{company_id}", status_code=status.HTTP_204_NO_CONTENT)

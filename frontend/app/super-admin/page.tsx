@@ -33,6 +33,11 @@ export default function SuperAdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [baseDomain, setBaseDomain] = useState("localhost:3000");
 
+  // State for resetting client admin password
+  const [resetTarget, setResetTarget] = useState<Company | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const host = window.location.host; // e.g. "admin.localhost:3000" or "myapp.vercel.app"
@@ -112,6 +117,45 @@ export default function SuperAdminPage() {
       await fetchData();
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to update status");
+    }
+  };
+
+  const handleDeleteCompany = async (company: Company) => {
+    const isPending = company.subscription_status === "pending";
+    const confirmMsg = isPending
+      ? `Are you sure you want to REJECT and DELETE the registration request for "${company.name}" (${company.subdomain})?\n\nThis will permanently remove the request and all associated records from the database.`
+      : `Are you sure you want to PERMANENTLY DELETE "${company.name}" (${company.subdomain})?\n\nWarning: All users, shipments, enquiries, and financial records for this company will be wiped from the database.`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await api.delete(`/api/super-admin/companies/${company.id}`);
+      alert(`🗑️ "${company.name}" has been permanently deleted from the database.`);
+      await fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to delete company");
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    if (newPassword.trim().length < 6) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
+    setIsResetting(true);
+    try {
+      const res = await api.post(`/api/super-admin/companies/${resetTarget.id}/reset-password`, {
+        new_password: newPassword.trim(),
+      });
+      alert(`🔑 Password updated successfully for ${res.data?.admin_email || resetTarget.name}!`);
+      setResetTarget(null);
+      setNewPassword("");
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to reset password");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -227,6 +271,7 @@ export default function SuperAdminPage() {
             <thead className="bg-slate-800/60 text-xs font-semibold uppercase text-slate-400 tracking-wider">
               <tr>
                 <th className="px-6 py-3.5">Company</th>
+                <th className="px-6 py-3.5">Admin Email</th>
                 <th className="px-6 py-3.5">Subdomain</th>
                 <th className="px-6 py-3.5">Plan</th>
                 <th className="px-6 py-3.5">Status</th>
@@ -236,14 +281,39 @@ export default function SuperAdminPage() {
             <tbody className="divide-y divide-slate-800">
               {companies.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
                     No tenant companies registered yet. Click &quot;+ Provision Tenant Company&quot; above to create one.
                   </td>
                 </tr>
               ) : (
                 companies.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-800/40 transition">
-                    <td className="px-6 py-4 font-semibold text-white">{c.name}</td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-white">{c.name}</div>
+                      {c.admin_name && (
+                        <div className="text-xs text-slate-400 mt-0.5">{c.admin_name}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {c.admin_email ? (
+                        <div className="inline-flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
+                          <span className="font-mono text-xs text-slate-200 select-all">{c.admin_email}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(c.admin_email || "");
+                              alert(`Copied to clipboard: ${c.admin_email}`);
+                            }}
+                            title="Copy email to clipboard"
+                            className="text-slate-400 hover:text-white transition cursor-pointer p-0.5"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500 italic">Not set</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <a
                         href={
@@ -276,34 +346,79 @@ export default function SuperAdminPage() {
                         {c.subscription_status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                      <button
-                        onClick={() => handleViewAsTenant(c.id)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition cursor-pointer shadow-sm shadow-blue-600/30"
-                        title="Open this company's CRM directly"
-                      >
-                        👁️ Open CRM
-                      </button>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleViewAsTenant(c.id)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition cursor-pointer shadow-sm shadow-blue-600/30 inline-flex items-center gap-1"
+                          title="Open this company's CRM directly without password"
+                        >
+                          <span>👁️ Open CRM</span>
+                        </button>
 
-                      {c.subscription_status !== "active" ? (
                         <button
-                          onClick={() => handleStatusChange(c.id, "active")}
-                          className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer shadow-sm ${
-                            c.subscription_status === "pending"
-                              ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30"
-                              : "bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30"
-                          }`}
+                          onClick={() => {
+                            setResetTarget(c);
+                            setNewPassword("");
+                          }}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer inline-flex items-center gap-1"
+                          title="Reset / Set password for this company's admin"
                         >
-                          {c.subscription_status === "pending" ? "✓ Approve & Activate" : "Reactivate"}
+                          <span>🔑 Password</span>
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => handleStatusChange(c.id, "suspended")}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 transition cursor-pointer"
-                        >
-                          Suspend
-                        </button>
-                      )}
+
+                        {c.subscription_status === "pending" ? (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(c.id, "active")}
+                              className="text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-600/30 transition cursor-pointer inline-flex items-center gap-1"
+                              title="Approve registration and activate workspace"
+                            >
+                              <span>✓ Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCompany(c)}
+                              className="text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 transition cursor-pointer inline-flex items-center gap-1"
+                              title="Reject fake/invalid registration and delete completely from DB"
+                            >
+                              <span>✕ Reject</span>
+                            </button>
+                          </>
+                        ) : c.subscription_status === "active" ? (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(c.id, "suspended")}
+                              className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white border border-amber-500/30 transition cursor-pointer"
+                              title="Suspend company access"
+                            >
+                              Suspend
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCompany(c)}
+                              className="text-xs px-2 py-1.5 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/20 transition cursor-pointer"
+                              title="Delete tenant permanently"
+                            >
+                              🗑️
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(c.id, "active")}
+                              className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 transition cursor-pointer"
+                            >
+                              Reactivate
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCompany(c)}
+                              className="text-xs px-2 py-1.5 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/20 transition cursor-pointer"
+                              title="Delete tenant permanently"
+                            >
+                              🗑️
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -446,6 +561,77 @@ export default function SuperAdminPage() {
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? "Provisioning..." : "Create Tenant & Admin"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal: Reset / Set Company Admin Password */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <span>🔑 Reset Admin Password</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Set a new password for <span className="text-blue-400 font-semibold">{resetTarget.name}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetTarget(null)}
+                className="text-slate-400 hover:text-white p-1 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60 text-xs text-slate-300 space-y-1">
+                <div>
+                  <span className="text-slate-400">Target Tenant:</span>{" "}
+                  <strong className="text-white">{resetTarget.name}</strong> ({resetTarget.subdomain})
+                </div>
+                <div>
+                  <span className="text-slate-400">Admin Email:</span>{" "}
+                  <strong className="text-blue-300 font-mono">{resetTarget.admin_email || "N/A"}</strong>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  New Password *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter new strong password (min 6 chars)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  💡 Tip: The new password will be immediately hashed & updated. You can copy and share it with the tenant.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setResetTarget(null)}
+                  className="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-medium transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isResetting}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50 cursor-pointer shadow-lg shadow-blue-600/30"
+                >
+                  {isResetting ? "Updating..." : "Update Password"}
                 </button>
               </div>
             </form>

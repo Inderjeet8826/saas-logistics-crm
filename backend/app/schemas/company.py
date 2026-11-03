@@ -30,3 +30,9 @@ class CompanyResponse(BaseModel):
     plan: str
     subscription_status: str
     created_at: datetime
+    admin_email: Optional[str] = None
+    admin_name: Optional[str] = None
+
+
+class ResetCompanyPasswordRequest(BaseModel):
+    new_password: str
