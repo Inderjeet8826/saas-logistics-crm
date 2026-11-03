@@ -64,6 +64,9 @@ def send_email(
                 if response.status in (200, 201):
                     logger.info(f"[EMAIL SERVICE - RESEND API] Successfully sent email to {to_email}")
                     return True
+        except urllib.error.HTTPError as http_err:
+            err_body = http_err.read().decode("utf-8", errors="ignore")
+            logger.error(f"[EMAIL SERVICE ERROR - RESEND API] HTTP {http_err.code}: {err_body}")
         except Exception as exc:
             logger.error(f"[EMAIL SERVICE ERROR - RESEND API] Failed to send to {to_email}: {exc}")
 
@@ -73,8 +76,12 @@ def send_email(
             import json
             import urllib.request
 
+            sender_email = settings.SMTP_FROM_EMAIL
+            if not sender_email or sender_email == "noreply@logistics-crm.com":
+                sender_email = settings.SMTP_USER or "inderjeetsonu2001@gmail.com"
+
             payload = {
-                "sender": {"name": settings.SMTP_FROM_NAME, "email": settings.SMTP_FROM_EMAIL},
+                "sender": {"name": settings.SMTP_FROM_NAME, "email": sender_email},
                 "to": [{"email": to_email}],
                 "subject": subject,
                 "htmlContent": html_content,
@@ -94,6 +101,9 @@ def send_email(
                 if response.status in (200, 201):
                     logger.info(f"[EMAIL SERVICE - BREVO API] Successfully sent email to {to_email}")
                     return True
+        except urllib.error.HTTPError as http_err:
+            err_body = http_err.read().decode("utf-8", errors="ignore")
+            logger.error(f"[EMAIL SERVICE ERROR - BREVO API] HTTP {http_err.code}: {err_body}")
         except Exception as exc:
             logger.error(f"[EMAIL SERVICE ERROR - BREVO API] Failed to send to {to_email}: {exc}")
 
